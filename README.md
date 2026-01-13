@@ -114,6 +114,7 @@ Visit: [http://localhost:8000](http://localhost:8000)
 <img width="1919" height="968" alt="image" src="https://github.com/user-attachments/assets/c88c0863-19b8-41bc-ac85-1564b327aebf" />
 <img width="1877" height="968" alt="image" src="https://github.com/user-attachments/assets/c522d163-3dba-4c97-8abb-352680584095" />
 
+<img width="1919" height="967" alt="image" src="https://github.com/user-attachments/assets/f2a968d9-20d3-49bf-abf2-e60f665ca827" />
 
 ---
 
