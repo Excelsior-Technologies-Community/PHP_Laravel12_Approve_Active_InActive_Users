@@ -37,7 +37,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Dashboard
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard.index');
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
-    
+
     // Customer Management
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', [AdminCustomerController::class, 'index'])->name('index');
@@ -53,6 +53,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('/{customer}/approve', [AdminCustomerController::class, 'approve'])->name('approve');
         Route::post('/{customer}/activate', [AdminCustomerController::class, 'activate'])->name('activate');
         Route::post('/{customer}/deactivate', [AdminCustomerController::class, 'deactivate'])->name('deactivate');
+        Route::get('/export/csv', [AdminCustomerController::class, 'exportCsv'])
+            ->name('export.csv');
     });
 
     // Request Management

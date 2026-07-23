@@ -10,13 +10,36 @@ use Illuminate\Http\Request;
 class CustomerController extends Controller
 {
     // Display all customers
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $customers = User::customers()
-            ->withCount(['requests'])
-            ->latest()
-            ->paginate(10);
-        
+        $query = User::customers()->withCount('requests');
+
+        // Search
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // Status Filter
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Approval Filter
+        if ($request->filled('approved')) {
+            $query->where('is_approved', $request->approved);
+        }
+
+        $customers = $query
+            ->oldest()
+            ->paginate(5)
+            ->withQueryString();
+
         return view('admin.customers.index', compact('customers'));
     }
 
@@ -26,11 +49,11 @@ class CustomerController extends Controller
         if (!$customer->isCustomer()) {
             abort(404);
         }
-        
+
         $requests = $customer->requests()
             ->latest()
             ->paginate(5);
-        
+
         return view('admin.customers.show', compact('customer', 'requests'));
     }
 
@@ -40,7 +63,7 @@ class CustomerController extends Controller
         if (!$customer->isCustomer()) {
             abort(404);
         }
-        
+
         return view('admin.customers.edit', compact('customer'));
     }
 
@@ -59,9 +82,9 @@ class CustomerController extends Controller
         ]);
 
         $oldStatus = $customer->status;
-        
+
         $customer->update($validated);
-        
+
         // Send notification if status changed
         if ($oldStatus !== $customer->status) {
             Notification::create([
@@ -85,7 +108,7 @@ class CustomerController extends Controller
         }
 
         $customer->delete();
-        
+
         return redirect()->route('admin.customers.index')
             ->with('success', 'Customer deleted successfully!');
     }
@@ -102,7 +125,7 @@ class CustomerController extends Controller
             'status' => 'active',
             'approved_at' => now()
         ]);
-        
+
         // Send notification to customer
         Notification::create([
             'user_id' => $customer->id,
@@ -123,7 +146,7 @@ class CustomerController extends Controller
         }
 
         $customer->update(['status' => 'active']);
-        
+
         // Send notification
         Notification::create([
             'user_id' => $customer->id,
@@ -143,7 +166,7 @@ class CustomerController extends Controller
         }
 
         $customer->update(['status' => 'inactive']);
-        
+
         // Send notification
         Notification::create([
             'user_id' => $customer->id,
@@ -163,7 +186,7 @@ class CustomerController extends Controller
             ->where('is_approved', false)
             ->latest()
             ->paginate(10);
-        
+
         return view('admin.customers.pending', compact('customers'));
     }
 
@@ -175,7 +198,7 @@ class CustomerController extends Controller
             ->approved()
             ->latest()
             ->paginate(10);
-        
+
         return view('admin.customers.active', compact('customers'));
     }
 
@@ -186,7 +209,53 @@ class CustomerController extends Controller
             ->inactive()
             ->latest()
             ->paginate(10);
-        
+
         return view('admin.customers.inactive', compact('customers'));
+    }
+
+    public function exportCsv()
+    {
+        $fileName = 'customers_' . now()->format('Y_m_d_H_i_s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename={$fileName}",
+        ];
+
+        $callback = function () {
+
+            $file = fopen('php://output', 'w');
+
+            fputcsv($file, [
+                'ID',
+                'Name',
+                'Email',
+                'Phone',
+                'Status',
+                'Approved',
+                'Registered Date'
+            ]);
+
+            $customers = User::customers()->get();
+
+            foreach ($customers as $customer) {
+
+                fputcsv($file, [
+
+                    $customer->id,
+                    $customer->name,
+                    $customer->email,
+                    $customer->phone,
+                    ucfirst($customer->status),
+                    $customer->is_approved ? 'Yes' : 'No',
+                    $customer->created_at->format('d-m-Y'),
+
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
