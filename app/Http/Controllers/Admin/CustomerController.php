@@ -221,7 +221,6 @@ class CustomerController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename={$fileName}",
         ];
-
         $callback = function () {
 
             $file = fopen('php://output', 'w');
