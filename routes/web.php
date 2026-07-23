@@ -55,6 +55,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('/{customer}/deactivate', [AdminCustomerController::class, 'deactivate'])->name('deactivate');
         Route::get('/export/csv', [AdminCustomerController::class, 'exportCsv'])
             ->name('export.csv');
+            
     });
 
     // Request Management
