@@ -30,10 +30,10 @@
 
             <div class="col-md-5">
                 <input type="text"
-                       name="search"
-                       class="form-control"
-                       placeholder="Search name, email or phone..."
-                       value="{{ request('search') }}">
+                    name="search"
+                    class="form-control"
+                    placeholder="Search name, email or phone..."
+                    value="{{ request('search') }}">
             </div>
 
             <div class="col-md-3">
@@ -43,7 +43,7 @@
                 </button>
 
                 <a href="{{ route('admin.customers.inactive') }}"
-                   class="btn btn-secondary">
+                    class="btn btn-secondary">
                     Reset
                 </a>
             </div>
@@ -116,15 +116,15 @@
 
                                 @if($customer->is_approved)
 
-                                    <span class="badge bg-success">
-                                        Approved
-                                    </span>
+                                <span class="badge bg-success">
+                                    Approved
+                                </span>
 
                                 @else
 
-                                    <span class="badge bg-warning">
-                                        Pending
-                                    </span>
+                                <span class="badge bg-warning">
+                                    Pending
+                                </span>
 
                                 @endif
 
@@ -139,18 +139,24 @@
                                 <div class="btn-group">
 
                                     <a href="{{ route('admin.customers.show',$customer) }}"
-                                       class="btn btn-sm btn-primary">
+                                        class="btn btn-sm btn-primary">
                                         <i class="bi bi-eye"></i>
                                     </a>
 
                                     <a href="{{ route('admin.customers.edit',$customer) }}"
-                                       class="btn btn-sm btn-warning">
+                                        class="btn btn-sm btn-warning">
                                         <i class="bi bi-pencil"></i>
                                     </a>
 
+                                    <a href="{{ route('admin.customers.history',$customer->id) }}"
+                                        class="btn btn-sm btn-info"
+                                        title="History">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+
                                     <form action="{{ route('admin.customers.activate',$customer) }}"
-                                          method="POST"
-                                          class="d-inline">
+                                        method="POST"
+                                        class="d-inline">
 
                                         @csrf
 
@@ -161,9 +167,9 @@
                                     </form>
 
                                     <form action="{{ route('admin.customers.destroy',$customer) }}"
-                                          method="POST"
-                                          class="d-inline"
-                                          onsubmit="return confirm('Delete this customer?')">
+                                        method="POST"
+                                        class="d-inline"
+                                        onsubmit="return confirm('Delete this customer?')">
 
                                         @csrf
                                         @method('DELETE')

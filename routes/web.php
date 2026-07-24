@@ -45,6 +45,11 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::get('/active', [AdminCustomerController::class, 'active'])->name('active');
         Route::get('/inactive', [AdminCustomerController::class, 'inactive'])->name('inactive');
         Route::get('/{customer}', [AdminCustomerController::class, 'show'])->name('show');
+
+        // Add here
+        Route::get('/{customer}/history', [AdminCustomerController::class, 'history'])
+            ->name('history');
+
         Route::get('/{customer}/edit', [AdminCustomerController::class, 'edit'])->name('edit');
         Route::put('/{customer}', [AdminCustomerController::class, 'update'])->name('update');
         Route::delete('/{customer}', [AdminCustomerController::class, 'destroy'])->name('destroy');
@@ -55,7 +60,6 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('/{customer}/deactivate', [AdminCustomerController::class, 'deactivate'])->name('deactivate');
         Route::get('/export/csv', [AdminCustomerController::class, 'exportCsv'])
             ->name('export.csv');
-            
     });
 
     // Request Management
