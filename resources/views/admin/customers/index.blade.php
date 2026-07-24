@@ -38,7 +38,7 @@
         </div>
 
     </div>
-    
+
 
     <br><br>
 
@@ -167,6 +167,11 @@
                                     <a href="{{ route('admin.customers.edit', $customer) }}"
                                         class="btn btn-outline-secondary">
                                         <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{{ route('admin.customers.history', $customer->id) }}"
+                                        class="btn btn-outline-info"
+                                        title="View History">
+                                        <i class="bi bi-clock-history"></i>
                                     </a>
                                     @if(!$customer->is_approved)
                                     <form action="{{ route('admin.customers.approve', $customer) }}"

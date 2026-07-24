@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\AuditLog;
 
 class User extends Authenticatable
 {
@@ -105,7 +106,7 @@ class User extends Authenticatable
 
     public function getStatusBadgeClass()
     {
-        return match($this->status) {
+        return match ($this->status) {
             'active' => 'bg-success',
             'inactive' => 'bg-danger',
             'pending' => 'bg-warning',
@@ -116,5 +117,10 @@ class User extends Authenticatable
     public function getApprovalBadgeClass()
     {
         return $this->is_approved ? 'bg-success' : 'bg-warning';
+    }
+
+    public function auditLogs()
+    {
+        return $this->hasMany(AuditLog::class);
     }
 }
