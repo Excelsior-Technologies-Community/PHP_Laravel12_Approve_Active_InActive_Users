@@ -37,6 +37,11 @@ class Request extends Model
         return $this->belongsTo(User::class, 'processed_by');
     }
 
+    public function messages()
+    {
+        return $this->hasMany(RequestMessage::class)->oldest();
+    }
+
     // Scopes
     public function scopePending($query)
     {

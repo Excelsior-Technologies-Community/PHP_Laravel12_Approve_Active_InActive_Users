@@ -19,7 +19,6 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     if (Auth::check()) {
         $user = Auth::user();
-        // Check user_type instead of isAdmin() method
         if ($user->user_type === 'admin') {
             return redirect()->route('admin.dashboard');
         } else {
@@ -32,7 +31,7 @@ Route::get('/dashboard', function () {
 // Authentication Routes (from Breeze)
 require __DIR__ . '/auth.php';
 
-// Admin Routes Group - TEMPORARILY REMOVE MIDDLEWARE FOR TESTING
+// Admin Routes Group
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard.index');
@@ -44,12 +43,14 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::get('/pending', [AdminCustomerController::class, 'pending'])->name('pending');
         Route::get('/active', [AdminCustomerController::class, 'active'])->name('active');
         Route::get('/inactive', [AdminCustomerController::class, 'inactive'])->name('inactive');
+
+        // Feature 1: Bulk Action
+        Route::post('/bulk-action', [AdminCustomerController::class, 'bulkAction'])->name('bulk-action');
+
+        Route::get('/export/csv', [AdminCustomerController::class, 'exportCsv'])->name('export.csv');
+
         Route::get('/{customer}', [AdminCustomerController::class, 'show'])->name('show');
-
-        // Add here
-        Route::get('/{customer}/history', [AdminCustomerController::class, 'history'])
-            ->name('history');
-
+        Route::get('/{customer}/history', [AdminCustomerController::class, 'history'])->name('history');
         Route::get('/{customer}/edit', [AdminCustomerController::class, 'edit'])->name('edit');
         Route::put('/{customer}', [AdminCustomerController::class, 'update'])->name('update');
         Route::delete('/{customer}', [AdminCustomerController::class, 'destroy'])->name('destroy');
@@ -58,8 +59,10 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('/{customer}/approve', [AdminCustomerController::class, 'approve'])->name('approve');
         Route::post('/{customer}/activate', [AdminCustomerController::class, 'activate'])->name('activate');
         Route::post('/{customer}/deactivate', [AdminCustomerController::class, 'deactivate'])->name('deactivate');
-        Route::get('/export/csv', [AdminCustomerController::class, 'exportCsv'])
-            ->name('export.csv');
+
+        // Feature 2: KYC Verification Actions
+        Route::post('/{customer}/kyc-approve', [AdminCustomerController::class, 'approveKyc'])->name('kyc.approve');
+        Route::post('/{customer}/kyc-reject', [AdminCustomerController::class, 'rejectKyc'])->name('kyc.reject');
     });
 
     // Request Management
@@ -74,13 +77,19 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         Route::post('/{request}/approve', [AdminRequestController::class, 'approve'])->name('approve');
         Route::post('/{request}/reject', [AdminRequestController::class, 'reject'])->name('reject');
         Route::post('/{request}/in-progress', [AdminRequestController::class, 'inProgress'])->name('in-progress');
+
+        // Feature 6: Message Thread
+        Route::post('/{request}/messages', [AdminRequestController::class, 'storeMessage'])->name('messages.store');
     });
 });
 
-// Customer Routes Group - TEMPORARILY REMOVE MIDDLEWARE FOR TESTING
+// Customer Routes Group
 Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(function () {
     // Dashboard
     Route::get('/dashboard', [CustomerDashboardController::class, 'index'])->name('dashboard');
+
+    // Feature 2: KYC Document Upload
+    Route::post('/kyc/upload', [CustomerDashboardController::class, 'uploadKyc'])->name('kyc.upload');
 
     // Notifications
     Route::post('/notifications/{id}/read', [CustomerDashboardController::class, 'markNotificationAsRead'])->name('notifications.read');
@@ -101,5 +110,8 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
         Route::post('/activation', [CustomerRequestController::class, 'storeActivationRequest'])->name('activation.store');
         Route::get('/{request}', [CustomerRequestController::class, 'show'])->name('show');
         Route::delete('/{request}', [CustomerRequestController::class, 'destroy'])->name('destroy');
+
+        // Feature 6: Message Thread
+        Route::post('/{request}/messages', [CustomerRequestController::class, 'storeMessage'])->name('messages.store');
     });
 });

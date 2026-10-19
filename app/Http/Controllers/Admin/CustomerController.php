@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 class CustomerController extends Controller
 {
     // Display all customers
-    public function index(\Illuminate\Http\Request $request)
+    public function index(Request $request)
     {
         $query = User::customers()->withCount('requests');
 
@@ -37,9 +37,14 @@ class CustomerController extends Controller
             $query->where('is_approved', $request->approved);
         }
 
+        // KYC Status Filter
+        if ($request->filled('kyc_status')) {
+            $query->where('kyc_status', $request->kyc_status);
+        }
+
         $customers = $query
-            ->oldest()
-            ->paginate(5)
+            ->latest()
+            ->paginate(10)
             ->withQueryString();
 
         return view('admin.customers.index', compact('customers'));
@@ -82,6 +87,7 @@ class CustomerController extends Controller
             'phone' => 'nullable|string|max:20',
             'status' => 'required|in:pending,active,inactive',
             'is_approved' => 'nullable|boolean',
+            'kyc_status' => 'nullable|in:unsubmitted,pending,verified,rejected',
         ]);
 
         $oldStatus = $customer->status;
@@ -95,7 +101,6 @@ class CustomerController extends Controller
             $validated['approved_at'] = now();
         }
 
-        // Clear approved_at if approval removed (optional)
         if (!$validated['is_approved']) {
             $validated['approved_at'] = null;
         }
@@ -143,16 +148,10 @@ class CustomerController extends Controller
         }
 
         AuditLog::create([
-
             'user_id' => $customer->id,
-
             'admin_id' => auth()->id(),
-
             'action' => 'Deleted',
-
-            'description' => auth()->user()->name .
-                ' deleted customer account.',
-
+            'description' => auth()->user()->name . ' deleted customer account.',
         ]);
 
         $customer->delete();
@@ -174,7 +173,6 @@ class CustomerController extends Controller
             'approved_at' => now()
         ]);
 
-        // Send notification to customer
         Notification::create([
             'user_id' => $customer->id,
             'title' => 'Account Approved',
@@ -184,16 +182,10 @@ class CustomerController extends Controller
         ]);
 
         AuditLog::create([
-
             'user_id' => $customer->id,
-
             'admin_id' => auth()->id(),
-
             'action' => 'Approved',
-
-            'description' => auth()->user()->name .
-                ' approved customer account.',
-
+            'description' => auth()->user()->name . ' approved customer account.',
         ]);
 
         return back()->with('success', 'Customer approved successfully!');
@@ -208,7 +200,6 @@ class CustomerController extends Controller
 
         $customer->update(['status' => 'active']);
 
-        // Send notification
         Notification::create([
             'user_id' => $customer->id,
             'title' => 'Account Activated',
@@ -217,16 +208,10 @@ class CustomerController extends Controller
         ]);
 
         AuditLog::create([
-
             'user_id' => $customer->id,
-
             'admin_id' => auth()->id(),
-
             'action' => 'Activated',
-
-            'description' => auth()->user()->name .
-                ' activated customer account.',
-
+            'description' => auth()->user()->name . ' activated customer account.',
         ]);
 
         return back()->with('success', 'Customer activated successfully!');
@@ -241,7 +226,6 @@ class CustomerController extends Controller
 
         $customer->update(['status' => 'inactive']);
 
-        // Send notification
         Notification::create([
             'user_id' => $customer->id,
             'title' => 'Account Deactivated',
@@ -250,19 +234,166 @@ class CustomerController extends Controller
         ]);
 
         AuditLog::create([
-
             'user_id' => $customer->id,
-
             'admin_id' => auth()->id(),
-
             'action' => 'Deactivated',
-
-            'description' => auth()->user()->name .
-                ' deactivated customer account.',
-
+            'description' => auth()->user()->name . ' deactivated customer account.',
         ]);
 
         return back()->with('success', 'Customer deactivated successfully!');
+    }
+
+    // Feature 1: Bulk / Batch Actions
+    public function bulkAction(Request $request)
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:approve,activate,deactivate,delete',
+            'customer_ids' => 'required|array|min:1',
+            'customer_ids.*' => 'exists:users,id',
+        ]);
+
+        $action = $validated['action'];
+        $customerIds = $validated['customer_ids'];
+        $admin = auth()->user();
+        $count = count($customerIds);
+
+        DB::transaction(function () use ($action, $customerIds, $admin) {
+            foreach ($customerIds as $id) {
+                $customer = User::find($id);
+                if (!$customer || !$customer->isCustomer()) continue;
+
+                if ($action === 'approve') {
+                    $customer->update([
+                        'is_approved' => true,
+                        'status' => 'active',
+                        'approved_at' => now(),
+                    ]);
+                    Notification::create([
+                        'user_id' => $customer->id,
+                        'title' => 'Account Approved',
+                        'message' => 'Your account has been approved and activated.',
+                        'type' => 'account_update',
+                    ]);
+                    AuditLog::create([
+                        'user_id' => $customer->id,
+                        'admin_id' => $admin->id,
+                        'action' => 'Bulk Approved',
+                        'description' => "{$admin->name} approved this customer via bulk action.",
+                    ]);
+                } elseif ($action === 'activate') {
+                    $customer->update(['status' => 'active']);
+                    Notification::create([
+                        'user_id' => $customer->id,
+                        'title' => 'Account Activated',
+                        'message' => 'Your account has been activated.',
+                        'type' => 'account_update',
+                    ]);
+                    AuditLog::create([
+                        'user_id' => $customer->id,
+                        'admin_id' => $admin->id,
+                        'action' => 'Bulk Activated',
+                        'description' => "{$admin->name} activated this customer via bulk action.",
+                    ]);
+                } elseif ($action === 'deactivate') {
+                    $customer->update(['status' => 'inactive']);
+                    Notification::create([
+                        'user_id' => $customer->id,
+                        'title' => 'Account Deactivated',
+                        'message' => 'Your account has been deactivated.',
+                        'type' => 'account_update',
+                    ]);
+                    AuditLog::create([
+                        'user_id' => $customer->id,
+                        'admin_id' => $admin->id,
+                        'action' => 'Bulk Deactivated',
+                        'description' => "{$admin->name} deactivated this customer via bulk action.",
+                    ]);
+                } elseif ($action === 'delete') {
+                    AuditLog::create([
+                        'user_id' => $customer->id,
+                        'admin_id' => $admin->id,
+                        'action' => 'Bulk Deleted',
+                        'description' => "{$admin->name} deleted this customer via bulk action.",
+                    ]);
+                    $customer->delete();
+                }
+            }
+        });
+
+        $actionWord = match ($action) {
+            'approve' => 'approved',
+            'activate' => 'activated',
+            'deactivate' => 'deactivated',
+            'delete' => 'deleted',
+        };
+
+        return back()->with('success', "Bulk action completed! Successfully {$actionWord} {$count} customer(s).");
+    }
+
+    // Feature 2: KYC Document Approval
+    public function approveKyc(User $customer)
+    {
+        if (!$customer->isCustomer()) {
+            abort(404);
+        }
+
+        $customer->update([
+            'kyc_status' => 'verified',
+            'kyc_verified_at' => now(),
+            'kyc_verified_by' => auth()->id(),
+            'kyc_notes' => null,
+        ]);
+
+        Notification::create([
+            'user_id' => $customer->id,
+            'title' => 'Identity Document Verified',
+            'message' => 'Your submitted identity document (' . ($customer->id_document_type ?: 'ID') . ') has been verified successfully.',
+            'type' => 'account_update',
+        ]);
+
+        AuditLog::create([
+            'user_id' => $customer->id,
+            'admin_id' => auth()->id(),
+            'action' => 'KYC Verified',
+            'description' => auth()->user()->name . ' verified customer identity document.',
+        ]);
+
+        return back()->with('success', 'Customer KYC document approved and marked as Verified.');
+    }
+
+    // Feature 2: KYC Document Rejection / Request Re-upload
+    public function rejectKyc(Request $request, User $customer)
+    {
+        if (!$customer->isCustomer()) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        $customer->update([
+            'kyc_status' => 'rejected',
+            'kyc_notes' => $validated['rejection_reason'],
+            'kyc_verified_at' => null,
+            'kyc_verified_by' => auth()->id(),
+        ]);
+
+        Notification::create([
+            'user_id' => $customer->id,
+            'title' => 'Identity Document Rejected',
+            'message' => 'Your identity document verification was rejected: ' . $validated['rejection_reason'] . '. Please re-upload a clear document.',
+            'type' => 'account_update',
+        ]);
+
+        AuditLog::create([
+            'user_id' => $customer->id,
+            'admin_id' => auth()->id(),
+            'action' => 'KYC Rejected',
+            'description' => auth()->user()->name . ' rejected KYC document. Reason: ' . $validated['rejection_reason'],
+        ]);
+
+        return back()->with('success', 'Customer KYC document rejected and notification sent.');
     }
 
     // Pending customers
@@ -309,7 +440,6 @@ class CustomerController extends Controller
             'Content-Disposition' => "attachment; filename={$fileName}",
         ];
         $callback = function () {
-
             $file = fopen('php://output', 'w');
 
             fputcsv($file, [
@@ -319,23 +449,24 @@ class CustomerController extends Controller
                 'Phone',
                 'Status',
                 'Approved',
+                'KYC Status',
+                'ID Document Type',
                 'Registered Date'
             ]);
 
             $customers = User::customers()->get();
 
             foreach ($customers as $customer) {
-
                 fputcsv($file, [
-
                     $customer->id,
                     $customer->name,
                     $customer->email,
                     $customer->phone,
                     ucfirst($customer->status),
                     $customer->is_approved ? 'Yes' : 'No',
+                    ucfirst($customer->kyc_status),
+                    $customer->id_document_type ?? 'N/A',
                     $customer->created_at->format('d-m-Y'),
-
                 ]);
             }
 
@@ -352,9 +483,6 @@ class CustomerController extends Controller
             ->latest()
             ->paginate(10);
 
-        return view(
-            'admin.customers.history',
-            compact('customer', 'logs')
-        );
+        return view('admin.customers.history', compact('customer', 'logs'));
     }
 }

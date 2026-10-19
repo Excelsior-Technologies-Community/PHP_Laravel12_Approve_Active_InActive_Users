@@ -125,6 +125,13 @@
                         Inactive Customers
                     </a>
                 </li>
+
+                <li class="nav-item">
+                    <a class="nav-link {{ request('kyc_status') === 'pending' ? 'active' : '' }}"
+                       href="{{ route('admin.customers.index', ['kyc_status' => 'pending']) }}">
+                        <i class="bi bi-shield-check me-2"></i> KYC Pending Review
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -133,15 +140,24 @@
             <div class="content-area">
 
                 @if(session('success'))
-                    <div class="alert alert-success">{{ session('success') }}</div>
+                    <div class="alert alert-success alert-dismissible fade show">
+                        <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 @if(session('error'))
-                    <div class="alert alert-danger">{{ session('error') }}</div>
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 @if(session('info'))
-                    <div class="alert alert-info">{{ session('info') }}</div>
+                    <div class="alert alert-info alert-dismissible fade show">
+                        <i class="bi bi-info-circle-fill me-2"></i>{{ session('info') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 @yield('content')
@@ -152,7 +168,8 @@
     </div>
 </div>
 
-<!-- Bootstrap JS -->
+<!-- Chart.js & Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 @stack('scripts')
 </body>

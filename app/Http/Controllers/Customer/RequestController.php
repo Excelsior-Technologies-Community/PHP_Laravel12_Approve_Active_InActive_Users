@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Request;
+use App\Models\RequestMessage;
+use App\Models\User;
+use App\Models\Notification;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,6 +16,7 @@ class RequestController extends Controller
     public function index()
     {
         $requests = Request::where('user_id', Auth::id())
+            ->withCount('messages')
             ->latest()
             ->paginate(10);
         
@@ -47,26 +51,72 @@ class RequestController extends Controller
             ->with('success', 'Request submitted successfully!');
     }
 
-    // Show request details
+    // Show request details with messages and timeline
     public function show(Request $request)
     {
-        // Ensure the request belongs to the logged-in customer
         if ($request->user_id !== Auth::id()) {
             abort(403);
         }
+
+        $request->load(['messages.user', 'processor']);
         
         return view('customer.requests.show', compact('request'));
+    }
+
+    // Post message from customer
+    public function storeMessage(HttpRequest $httpRequest, Request $request)
+    {
+        if ($request->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $httpRequest->validate([
+            'message' => 'required|string',
+            'attachment' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf,doc,docx,zip,txt',
+        ]);
+
+        $attachmentPath = null;
+        $attachmentName = null;
+
+        if ($httpRequest->hasFile('attachment')) {
+            $file = $httpRequest->file('attachment');
+            $attachmentName = $file->getClientOriginalName();
+            $attachmentPath = $file->store('request_attachments', 'public');
+        }
+
+        RequestMessage::create([
+            'request_id' => $request->id,
+            'user_id' => Auth::id(),
+            'message' => $validated['message'],
+            'attachment_path' => $attachmentPath,
+            'attachment_name' => $attachmentName,
+            'is_admin' => false,
+        ]);
+
+        // Notify Admins
+        $admins = User::admins()->get();
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title' => 'Customer Message on Request #' . $request->id,
+                'message' => Auth::user()->name . ': ' . \Illuminate\Support\Str::limit($validated['message'], 75),
+                'type' => 'request_update',
+                'data' => [
+                    'request_id' => $request->id,
+                ]
+            ]);
+        }
+
+        return back()->with('success', 'Message sent successfully.');
     }
 
     // Cancel request
     public function destroy(Request $request)
     {
-        // Ensure the request belongs to the logged-in customer
         if ($request->user_id !== Auth::id()) {
             abort(403);
         }
         
-        // Only allow cancellation if request is still pending
         if (!$request->isPending()) {
             return back()->with('error', 'Cannot delete request that is already processed.');
         }
@@ -80,7 +130,6 @@ class RequestController extends Controller
     // Special request for account activation
     public function createActivationRequest()
     {
-        // Check if user already has a pending activation request
         $existingRequest = Request::where('user_id', Auth::id())
             ->where('type', 'account_activation')
             ->pending()
@@ -97,7 +146,6 @@ class RequestController extends Controller
     // Submit activation request
     public function storeActivationRequest(HttpRequest $httpRequest)
     {
-        // Check if user already has a pending activation request
         $existingRequest = Request::where('user_id', Auth::id())
             ->where('type', 'account_activation')
             ->pending()
