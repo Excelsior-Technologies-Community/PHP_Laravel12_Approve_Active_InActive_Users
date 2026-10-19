@@ -114,6 +114,92 @@
                 </div>
             </div>
 
+            <!-- KYC Document Verification Card (Feature 2) -->
+            <div class="card mb-4 border-0 shadow-sm">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-shield-check text-primary me-2"></i>KYC Identity Verification
+                    </h5>
+                    <span class="badge {{ $customer->getKycBadgeClass() }} px-3 py-1 fs-6">
+                        {{ ucfirst($customer->kyc_status) }}
+                    </span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr>
+                                    <th class="text-muted" style="width: 140px;">Document Type:</th>
+                                    <td class="fw-bold">{{ $customer->id_document_type ?: 'Not Submitted' }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">KYC Status:</th>
+                                    <td>
+                                        <span class="badge {{ $customer->getKycBadgeClass() }}">{{ ucfirst($customer->kyc_status) }}</span>
+                                    </td>
+                                </tr>
+                                @if($customer->kyc_verified_at)
+                                <tr>
+                                    <th class="text-muted">Verified At:</th>
+                                    <td>{{ $customer->kyc_verified_at->format('M d, Y h:i A') }}</td>
+                                </tr>
+                                @endif
+                                @if($customer->kyc_notes)
+                                <tr>
+                                    <th class="text-muted">Rejection Note:</th>
+                                    <td class="text-danger fw-semibold">{{ $customer->kyc_notes }}</td>
+                                </tr>
+                                @endif
+                            </table>
+                        </div>
+
+                        <div class="col-md-6 text-center text-md-end mt-3 mt-md-0">
+                            @if($customer->id_document_path)
+                                @if($customer->isKycDocumentImage())
+                                    <a href="{{ $customer->kyc_document_url }}" target="_blank">
+                                        <img src="{{ $customer->kyc_document_url }}" alt="ID Document" class="img-thumbnail rounded shadow-sm mb-2" style="max-height: 120px;">
+                                    </a>
+                                @endif
+                                <div>
+                                    <a href="{{ $customer->kyc_document_url }}" target="_blank" class="btn btn-outline-primary btn-sm mb-2">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i> Open Document in New Tab
+                                    </a>
+                                </div>
+
+                                <div class="btn-group btn-group-sm">
+                                    <form action="{{ route('admin.customers.kyc.approve', $customer) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="bi bi-check-circle me-1"></i> Approve KYC
+                                        </button>
+                                    </form>
+
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="collapse" data-bs-target="#rejectKycCollapse">
+                                        <i class="bi bi-x-circle me-1"></i> Reject KYC
+                                    </button>
+                                </div>
+
+                                <div class="collapse mt-3 text-start" id="rejectKycCollapse">
+                                    <form action="{{ route('admin.customers.kyc.reject', $customer) }}" method="POST" class="border p-3 rounded bg-light">
+                                        @csrf
+                                        <label class="form-label small fw-bold text-danger">Rejection Reason *</label>
+                                        <textarea name="rejection_reason" class="form-control form-control-sm mb-2" rows="2" placeholder="State reason (e.g. Incomplete scan, name mismatch)..." required></textarea>
+                                        <div class="text-end">
+                                            <button type="submit" class="btn btn-sm btn-danger">Confirm Rejection</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            @else
+                                <div class="text-muted small py-3">
+                                    <i class="bi bi-file-earmark-x fs-2 d-block text-secondary"></i>
+                                    No identity document submitted yet.
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Customer Requests -->
             <div class="card">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
